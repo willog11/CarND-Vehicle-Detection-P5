@@ -186,6 +186,7 @@ if sample_size > 1:
     classifier_pickle = {}
     classifier_pickle["svc"] = svc
     classifier_pickle["X_scaler"] = X_scaler
+    classifier_pickle["color_space"] = color_space
     classifier_pickle["orient"] = orient
     classifier_pickle["pix_per_cell"] = pix_per_cell
     classifier_pickle["cell_per_block"] = cell_per_block
