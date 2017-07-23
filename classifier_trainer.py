@@ -40,14 +40,14 @@ color_space = 'HSV' # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
 orient = 9  # HOG orientations
 pix_per_cell = 9 # HOG pixels per cell
 cell_per_block = 2 # HOG cells per block
-hog_channel = 0# Can be 0, 1, 2, or "ALL"
+hog_channel = 'ALL' # Can be 0, 1, 2, or "ALL"
 spatial_size = (16, 16) # Spatial binning dimensions
 hist_bins = 32    # Number of histogram bins
 spatial_feat = True # Spatial features on or off
 hist_feat = True # Histogram features on or off
 hog_feat = True # HOG features on or off
 visualize_feat = False # Visualize HOG
-visualize_trans = False
+visualize_trans = True
 
 if visualize_feat == False:
     car_features = extract_features(cars, color_space=color_space, 
@@ -183,4 +183,17 @@ if sample_size > 1:
     print('Test Accuracy of SVC = ', round(svc.score(X_test, y_test), 4)) # Check the score of the SVC
     
     # Save the classifier for use later
-    pickle.dump(svc, open( "svm_classifier.p", "wb" ))
+    classifier_pickle = {}
+    classifier_pickle["svc"] = svc
+    classifier_pickle["X_scaler"] = X_scaler
+    classifier_pickle["orient"] = orient
+    classifier_pickle["pix_per_cell"] = pix_per_cell
+    classifier_pickle["cell_per_block"] = cell_per_block
+    classifier_pickle["hog_channel"] = hog_channel
+    classifier_pickle["spatial_size"] = spatial_size
+    classifier_pickle["hist_bins"] = hist_bins
+    classifier_pickle["spatial_feat"] = spatial_feat 
+    classifier_pickle["hist_feat"] = hist_feat
+    classifier_pickle["hog_feat"] = hog_feat                         
+    
+    pickle.dump(classifier_pickle, open( "svm_classifier.p", "wb" ))
