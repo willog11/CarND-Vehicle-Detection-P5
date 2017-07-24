@@ -14,7 +14,7 @@ import glob
 from helper_functions import *
 from scipy.ndimage.measurements import label
 
-classifier_pickle = pickle.load( open("svm_classifier.p", "rb" ) )
+classifier_pickle = pickle.load( open("svm_classifier_YCrCb.p", "rb" ) )
 svc = classifier_pickle["svc"]
 X_scaler = classifier_pickle["X_scaler"]
 color_space = classifier_pickle["color_space"]
@@ -29,10 +29,14 @@ hist_feat = classifier_pickle["hist_feat"]
 hog_feat = classifier_pickle["hog_feat"]
  
 # Define a single function that can extract features using hog sub-sampling and make predictions
-def find_cars(img, ystart, ystop, scale, svc, X_scaler, color_space, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat):
+def find_cars(img, ystart, ystop, xstart, xstop,
+              scale, svc, X_scaler, 
+              color_space, orient, pix_per_cell, cell_per_block, 
+              spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+              box_list, visualize=False):
     
     draw_img = np.copy(img)
-    img_tosearch = img[ystart:ystop,:,:]
+    img_tosearch = img[ystart:ystop,xstart:xstop,:]
 
     if color_space != 'RGB':
         if color_space == 'HSV':
@@ -59,6 +63,12 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, color_space, orient, pix
     # Define blocks and steps as above
     nxblocks = (ch1.shape[1] // pix_per_cell) - cell_per_block + 1
     nyblocks = (ch1.shape[0] // pix_per_cell) - cell_per_block + 1 
+               
+#    if visualize==True:
+#        window_list = slide_window(draw_img, x_start_stop=[None, None], y_start_stop=[ystart, ystop], xy_window=(64, 64), xy_overlap=(0.5, 0.5))
+#        for window in window_list:
+#            cv2.rectangle(draw_img,window[0],window[1],(255,0,0),2) 
+        
     #nfeat_per_block = orient*cell_per_block**2
     
     # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
@@ -67,15 +77,13 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, color_space, orient, pix
     cells_per_step = 2  # Instead of overlap, define how many cells to step
     nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
     nysteps = (nyblocks - nblocks_per_window) // cells_per_step
-    #print(nblocks_per_window)
-    
+
     # Compute individual channel HOG features for the entire image
     if hog_feat == True and hog_channel == 'ALL':
         hog1 = get_hog_features(ch1, orient, pix_per_cell, cell_per_block, feature_vec=False)
         hog2 = get_hog_features(ch2, orient, pix_per_cell, cell_per_block, feature_vec=False)
         hog3 = get_hog_features(ch3, orient, pix_per_cell, cell_per_block, feature_vec=False)
     
-    box_list = []
     for xb in range(nxsteps):
         for yb in range(nysteps):
             ypos = yb*cells_per_step
@@ -111,12 +119,18 @@ def find_cars(img, ystart, ystop, scale, svc, X_scaler, color_space, orient, pix
             #test_features = X_scaler.transform(np.hstack((shape_feat, hist_feat)).reshape(1, -1))    
             test_prediction = svc.predict(test_features)
             
-            if test_prediction == 1:
+            if visualize==True:
                 xbox_left = np.int(xleft*scale)
                 ytop_draw = np.int(ytop*scale)
                 win_draw = np.int(window*scale)
-                box_list.append([[xbox_left, ytop_draw+ystart], [xbox_left+win_draw,ytop_draw+win_draw+ystart]])
-                cv2.rectangle(draw_img,(xbox_left, ytop_draw+ystart),(xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),6) 
+                cv2.rectangle(draw_img,(xstart+xbox_left, ytop_draw+ystart),(xstart+xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),2) 
+            else:
+                if test_prediction == 1:
+                    xbox_left = np.int(xleft*scale)
+                    ytop_draw = np.int(ytop*scale)
+                    win_draw = np.int(window*scale)
+                    box_list.append([[xstart+xbox_left, ytop_draw+ystart], [xstart+xbox_left+win_draw,ytop_draw+win_draw+ystart]])
+                    cv2.rectangle(draw_img,(xstart+xbox_left, ytop_draw+ystart),(xstart+xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),2) 
                 
     return draw_img, box_list
 
@@ -150,36 +164,90 @@ def draw_labeled_bboxes(img, labels):
         cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
     # Return the image
     return img
-    
-ystart = 400
-ystop = 656
-scale = 2
 
-image_paths = glob.glob('*test_images/*')
-images = []
-for image_path in image_paths:
-        img = mpimg.imread(image_path)
-        heat = np.zeros_like(img[:,:,0]).astype(np.float)
-        out_img_inital, box_list = find_cars(img, ystart, ystop, scale, svc, X_scaler, color_space, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat)
+def process_frame(img):
+    heat = np.zeros_like(img[:,:,0]).astype(np.float)
+    box_list = []
+    xstart = 0
+    xstop = img.shape[1]
+    ystart = 400
+    ystop = 655
+    scale = 1.8
+    out_img_inital, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
+                                         scale, svc, X_scaler, 
+                                         color_space, orient, pix_per_cell, cell_per_block, 
+                                         spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+                                         box_list, visualize=False)
+    
+#    result = cv2.cvtColor(out_img_inital, cv2.COLOR_RGB2BGR)
+#    cv2.imshow('Stage 1',result)
+#    cv2.waitKey(-1)
+    
+    xstart = 400
+    xstop = 1100
+    ystart = 400
+    ystop = 500
+    scale = 0.8
+    out_img_inital_1, box_list = find_cars(img, ystart, ystop, xstart, xstop,
+                                         scale, svc, X_scaler, 
+                                         color_space, orient, pix_per_cell, cell_per_block, 
+                                         spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+                                         box_list, visualize=False)
+    
+#    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
+#    cv2.imshow('Stage 2',result)
+#    cv2.waitKey(-1)
+    
+    # Add heat to each box in box list
+    heat = add_heat(heat,box_list)
         
-        result = cv2.cvtColor(out_img_inital, cv2.COLOR_RGB2BGR)
-        cv2.imshow('Pre Heat Map',result)
-        cv2.waitKey(-1)
+    # Apply threshold to help remove false positives
+    heat = apply_threshold(heat,1)
+    
+    # Visualize the heatmap when displaying    
+    heatmap = np.clip(heat, 0, 255)
+    
+    # Find final boxes from heatmap using label function
+    labels = label(heatmap)
+    draw_img = draw_labeled_bboxes(np.copy(img), labels)
+    draw_img = cv2.cvtColor(draw_img, cv2.COLOR_RGB2BGR)
+    return draw_img
+    
+
+test_video = False
+
+if test_video == True:
+    vid_name = 'project_video'
+    cap = cv2.VideoCapture(vid_name+'.mp4')
+    
+    while(cap.isOpened()):
+        ret, frame = cap.read()
+        if ret == True:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            result_img = process_frame(frame)
+            #out.write(result)
+            cv2.imshow('Result',result_img)
+            first_frame = False
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            print("Video not found")
+            break;
+    
+    cap.release()
+    #out.release()
+    cv2.destroyAllWindows()
+    
+                        
+    
+else:
+    image_paths = glob.glob('*test_images/*.jpg')
+    images = []
+    for image_path in image_paths:
+            img = mpimg.imread(image_path)
+            result_img =process_frame(img)
+            cv2.imshow('Post Heat Map',result_img)
+            cv2.waitKey(-1)
+            cv2.destroyAllWindows()
         
-        # Add heat to each box in box list
-        heat = add_heat(heat,box_list)
-            
-        # Apply threshold to help remove false positives
-        heat = apply_threshold(heat,1)
-        
-        # Visualize the heatmap when displaying    
-        heatmap = np.clip(heat, 0, 255)
-        
-        # Find final boxes from heatmap using label function
-        labels = label(heatmap)
-        draw_img = draw_labeled_bboxes(np.copy(img), labels)
-        draw_img = cv2.cvtColor(draw_img, cv2.COLOR_RGB2BGR)
-        cv2.imshow('Post Heat Map',draw_img)
-        cv2.waitKey(-1)
-        cv2.destroyAllWindows()
         
