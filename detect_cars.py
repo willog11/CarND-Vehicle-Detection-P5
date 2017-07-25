@@ -28,6 +28,15 @@ spatial_feat = classifier_pickle["spatial_feat"]
 hist_feat = classifier_pickle["hist_feat"]
 hog_feat = classifier_pickle["hog_feat"]
  
+cam_pickle = pickle.load( open( "cam_pickle.p", "rb" ) )
+mtx = cam_pickle["mtx"]
+dist = cam_pickle["dist"]
+    
+def undistort_image(img, visualize=False):
+    # Read in the saved camera matrix and distortion coefficient
+    undistort_img = cv2.undistort(img, mtx, dist, None, mtx)
+    return undistort_img
+    
 # Define a single function that can extract features using hog sub-sampling and make predictions
 def find_cars(img, ystart, ystop, xstart, xstop,
               scale, svc, X_scaler, 
@@ -152,6 +161,7 @@ def apply_threshold(heatmap, threshold):
 
 def draw_labeled_bboxes(img, labels):
     # Iterate through all detected cars
+    bboxes = []
     for car_number in range(1, labels[1]+1):
         # Find pixels with each car_number label value
         nonzero = (labels[0] == car_number).nonzero()
@@ -160,18 +170,53 @@ def draw_labeled_bboxes(img, labels):
         nonzerox = np.array(nonzero[1])
         # Define a bounding box based on min/max x and y
         bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+        bboxes.append(bbox)
         # Draw the box on the image
         cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
     # Return the image
-    return img
+    return img, bboxes
 
-def process_frame(img):
+def process_frame(img, bboxes, tracking):
+    
+    #undistort_img = undistort_image(img, False)
+    result_img, bboxes_cars = detect_cars(img, bboxes)
+    
+    if tracking==True:
+        xpadding = 50
+        ypadding = 20
+        boxes_tracked = []
+        for box in bboxes_cars:
+            xstart, ystart = box[0][0]-xpadding, box[0][1]-ypadding
+            xend, yend = box[1][0]+xpadding, box[1][1]+ypadding
+            bbox = ((xstart, ystart), (xend, yend))
+            boxes_tracked.append(bbox)
+    
+    return result_img, boxes_tracked
+    
+def detect_cars(img, bboxes):
     heat = np.zeros_like(img[:,:,0]).astype(np.float)
     box_list = []
+    
+    for box in bboxes:
+        xstart = box[0][0]
+        xstop = box[1][0]
+        ystart = box[0][1]
+        ystop = box[1][1]
+        scale = 0.8
+        out_img_inital_track, box_list = find_cars(img, ystart, ystop, xstart, xstop,
+                                             scale, svc, X_scaler, 
+                                             color_space, orient, pix_per_cell, cell_per_block, 
+                                             spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+                                             box_list, visualize=False)
+#        result = cv2.cvtColor(out_img_inital_track, cv2.COLOR_RGB2BGR)
+#        cv2.imshow('Stage 1',result)
+#        cv2.waitKey(-1)
+        
+    
     xstart = 0
     xstop = img.shape[1]
     ystart = 400
-    ystop = 655
+    ystop = 685
     scale = 1.8
     out_img_inital, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
                                          scale, svc, X_scaler, 
@@ -202,29 +247,30 @@ def process_frame(img):
     heat = add_heat(heat,box_list)
         
     # Apply threshold to help remove false positives
-    heat = apply_threshold(heat,1)
+    heat = apply_threshold(heat,2)
     
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
     
     # Find final boxes from heatmap using label function
     labels = label(heatmap)
-    draw_img = draw_labeled_bboxes(np.copy(img), labels)
+    draw_img, bboxes = draw_labeled_bboxes(np.copy(img), labels)
     draw_img = cv2.cvtColor(draw_img, cv2.COLOR_RGB2BGR)
-    return draw_img
+    return draw_img, bboxes
     
 
-test_video = False
+test_video = True
+bboxes = []
 
 if test_video == True:
-    vid_name = 'project_video'
+    vid_name = 'test_video'
     cap = cv2.VideoCapture(vid_name+'.mp4')
     
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            result_img = process_frame(frame)
+            result_img, bboxes = process_frame(frame, bboxes, True)
             #out.write(result)
             cv2.imshow('Result',result_img)
             first_frame = False
@@ -245,7 +291,7 @@ else:
     images = []
     for image_path in image_paths:
             img = mpimg.imread(image_path)
-            result_img =process_frame(img)
+            result_img, bboxes =process_frame(img, bboxes, False)
             cv2.imshow('Post Heat Map',result_img)
             cv2.waitKey(-1)
             cv2.destroyAllWindows()
