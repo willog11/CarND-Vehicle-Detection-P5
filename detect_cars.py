@@ -14,7 +14,7 @@ import glob
 from helper_functions import *
 from scipy.ndimage.measurements import label
 
-classifier_pickle = pickle.load( open("svm_classifier_YCrCb.p", "rb" ) )
+classifier_pickle = pickle.load( open("svm_classifier_LUV.p", "rb" ) )
 svc = classifier_pickle["svc"]
 X_scaler = classifier_pickle["X_scaler"]
 color_space = classifier_pickle["color_space"]
@@ -172,19 +172,19 @@ def draw_labeled_bboxes(img, labels):
         bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
         bboxes.append(bbox)
         # Draw the box on the image
-        cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
+        cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 2)
     # Return the image
     return img, bboxes
 
 def process_frame(img, bboxes, tracking):
     
-    #undistort_img = undistort_image(img, False)
-    result_img, bboxes_cars = detect_cars(img, bboxes)
+    undistort_img = undistort_image(img, False)
+    result_img, bboxes_cars = detect_cars(undistort_img, bboxes)
     
+    boxes_tracked = []
     if tracking==True:
-        xpadding = 50
+        xpadding = 20
         ypadding = 20
-        boxes_tracked = []
         for box in bboxes_cars:
             xstart, ystart = box[0][0]-xpadding, box[0][1]-ypadding
             xend, yend = box[1][0]+xpadding, box[1][1]+ypadding
@@ -197,7 +197,7 @@ def detect_cars(img, bboxes):
     heat = np.zeros_like(img[:,:,0]).astype(np.float)
     box_list = []
     
-    for box in bboxes:
+    for box in bboxes:   
         xstart = box[0][0]
         xstop = box[1][0]
         ystart = box[0][1]
@@ -208,6 +208,13 @@ def detect_cars(img, bboxes):
                                              color_space, orient, pix_per_cell, cell_per_block, 
                                              spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                              box_list, visualize=False)
+        
+#        out_img_inital, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
+#                                         scale, svc, X_scaler, 
+#                                         color_space, orient, pix_per_cell, cell_per_block, 
+#                                         spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+#                                         box_list, visualize=False)
+
 #        result = cv2.cvtColor(out_img_inital_track, cv2.COLOR_RGB2BGR)
 #        cv2.imshow('Stage 1',result)
 #        cv2.waitKey(-1)
@@ -218,36 +225,50 @@ def detect_cars(img, bboxes):
     ystart = 400
     ystop = 685
     scale = 1.8
-    out_img_inital, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
+    out_img_inital_1, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                          box_list, visualize=False)
-    
-#    result = cv2.cvtColor(out_img_inital, cv2.COLOR_RGB2BGR)
+#    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
 #    cv2.imshow('Stage 1',result)
 #    cv2.waitKey(-1)
     
     xstart = 400
-    xstop = 1100
-    ystart = 400
-    ystop = 500
-    scale = 0.8
-    out_img_inital_1, box_list = find_cars(img, ystart, ystop, xstart, xstop,
+    xstop = img.shape[1]
+    ystart = 350
+    ystop = 550
+    scale = 1.4
+    out_img_inital_2, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                          box_list, visualize=False)
     
-#    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
+#    result = cv2.cvtColor(out_img_inital_2, cv2.COLOR_RGB2BGR)
 #    cv2.imshow('Stage 2',result)
+#    cv2.waitKey(-1)
+    
+    xstart = 400
+    xstop = img.shape[1]
+    ystart = 400
+    ystop = 500
+    scale = 0.8
+    out_img_inital_3, box_list = find_cars(img, ystart, ystop, xstart, xstop,
+                                         scale, svc, X_scaler, 
+                                         color_space, orient, pix_per_cell, cell_per_block, 
+                                         spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
+                                         box_list, visualize=False)
+    
+#    result = cv2.cvtColor(out_img_inital_3, cv2.COLOR_RGB2BGR)
+#    cv2.imshow('Stage 3',result)
 #    cv2.waitKey(-1)
     
     # Add heat to each box in box list
     heat = add_heat(heat,box_list)
         
     # Apply threshold to help remove false positives
-    heat = apply_threshold(heat,2)
+    heat = apply_threshold(heat,1)
     
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
