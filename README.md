@@ -11,9 +11,9 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 [image1]: ./output_images/HOG.png
-[image2]: ./output_images/color_hog_features_LUV.png.jpg
-[image3]: ./output_images/normalized_features_LUV.jpg
-[image4]: ./output_images/first_row_of_search_areas.jpg
+[image2]: ./output_images/color_hog_features_LUV.png
+[image3]: ./output_images/normalized_features_LUV.png
+[image4]: ./output_images/first_row_of_search_areas.png
 [image5]: ./output_images/second_row_of_search_areas.png
 [image6]: ./output_images/third_row_of_search_areas.png
 [image7]: ./examples/output_bboxes.png
