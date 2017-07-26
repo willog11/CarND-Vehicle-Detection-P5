@@ -45,7 +45,6 @@ The training code can be found classifier_trainer.py The logic of which is very 
 
 I then explored different color spaces by training the the model on different color spaces and recording the validation result each time following the steps above.
 
-![alt text][image2]
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
 
