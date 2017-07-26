@@ -248,6 +248,11 @@ def process_frame(img, bboxes, tracking):
         for box in bboxes_cars:
             xstart, ystart = box[0][0]-xpadding, box[0][1]-ypadding
             xend, yend = box[1][0]+xpadding, box[1][1]+ypadding
+            
+            xstart = xstart if xstart >= 0 else 0
+            xend = xend if xend <= img.shape[1] else img.shape[1]
+            ystart = ystart if ystart >= 0 else 0
+            yend = yend if yend <= img.shape[0] else img.shape[0]
             bbox = ((xstart, ystart), (xend, yend))
             boxes_tracked.append(bbox)
     
@@ -298,12 +303,12 @@ def detect_cars(img, bboxes):
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
-                                         box_list, visualize=False)
+                                         box_list, visualize=True)
     
     draw_img, box_list_1 = heatmap(img, box_list, 3)
-#    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
-#    cv2.imshow('Stage 1',result)
-#    cv2.waitKey(-1)
+    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
+    cv2.imshow('Stage 1',result)
+    cv2.waitKey(-1)
     
     xstart = 400
     xstop = img.shape[1]
@@ -314,13 +319,13 @@ def detect_cars(img, bboxes):
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
-                                         box_list, visualize=False)
+                                         box_list, visualize=True)
     
     draw_img, box_list_2 = heatmap(img, box_list, 3)
     
-#    result = cv2.cvtColor(out_img_inital_2, cv2.COLOR_RGB2BGR)
-#    cv2.imshow('Stage 2',result)
-#    cv2.waitKey(-1)
+    result = cv2.cvtColor(out_img_inital_2, cv2.COLOR_RGB2BGR)
+    cv2.imshow('Stage 2',result)
+    cv2.waitKey(-1)
     
     xstart = 500
     xstop = img.shape[1]
@@ -331,12 +336,12 @@ def detect_cars(img, bboxes):
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
-                                         box_list, visualize=False)
+                                         box_list, visualize=True)
     draw_img, box_list_3 = heatmap(img, box_list, 2)
     
-#    result = cv2.cvtColor(out_img_inital_3, cv2.COLOR_RGB2BGR)
-#    cv2.imshow('Stage 3',result)
-#    cv2.waitKey(-1)
+    result = cv2.cvtColor(out_img_inital_3, cv2.COLOR_RGB2BGR)
+    cv2.imshow('Stage 3',result)
+    cv2.waitKey(-1)
     
     result_boxes = tracked_boxes + box_list_1 + box_list_2 + box_list_3
     draw_img, bboxes = heatmap(img, result_boxes, 0)
@@ -354,7 +359,7 @@ bboxes = []
 if test_video == True:
     vid_name = 'project_video'
     cap = cv2.VideoCapture(vid_name+'.mp4')
-    out = cv2.VideoWriter(vid_name+'_result.avi',-1, 20.0, (1280,720))    
+    out = cv2.VideoWriter(vid_name+"_"+color_space+'_result.avi',-1, 20.0, (1280,720))    
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
