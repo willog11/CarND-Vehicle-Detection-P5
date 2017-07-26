@@ -18,7 +18,7 @@ import sklearn.utils as utils
 import matplotlib.pyplot as plt
 
 
-prototype = False
+prototype = True
 # Read in cars and notcars
 images = glob.glob('*vehicles/*/*/*')
 cars = []
@@ -37,6 +37,7 @@ if prototype == True:
 
 # Define parameters for feature extraction
 color_spaces = ['RGB','HSV','LUV','HLS','YUV','YCrCb']  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
+color_spaces= ['LUV']
 orient = 9  # HOG orientations
 pix_per_cell = 9 # HOG pixels per cell
 cell_per_block = 2 # HOG cells per block
@@ -72,7 +73,7 @@ for color_space in color_spaces:
         if len(hog_features) == 0:
             plt.imshow(hog_features)
         else:
-            image = cv2.imread(cars[0])
+            image = cv2.imread(cars[-1])
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             bin_edges = channels_hist[0][1]
             bin_centers = (bin_edges[1:]  + bin_edges[0:len(bin_edges)-1])/2
@@ -149,7 +150,7 @@ for color_space in color_spaces:
         
         idx = 1
         plt.subplot(rows, cols, idx)
-        image = cv2.imread(cars[0])
+        image = cv2.imread(cars[-1])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         plt.imshow(image)
         plt.title('Original Image')
