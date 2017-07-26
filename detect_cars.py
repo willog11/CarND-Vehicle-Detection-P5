@@ -176,10 +176,70 @@ def draw_labeled_bboxes(img, labels):
     # Return the image
     return img, bboxes
 
+# Malisiewicz et al.
+def non_max_suppression_fast(boxes_list, overlapThresh):
+    # if there are no boxes, return an empty list
+    boxes = []
+    if len(boxes) == 0:
+    	return []
+    
+    for box in boxes_list:
+       boxes.append(box[0][0],box[0][1], box[1][0], box[1][1])
+    # if the bounding boxes integers, convert them to floats --
+    # this is important since we'll be doing a bunch of divisions
+    if boxes.dtype.kind == "i":
+        boxes = boxes.astype("float")
+     
+    # initialize the list of picked indexes	
+    pick = []
+     
+    # grab the coordinates of the bounding boxes
+    x1 = boxes[:,0]
+    y1 = boxes[:,1]
+    x2 = boxes[:,2]
+    y2 = boxes[:,3]
+    
+    # compute the area of the bounding boxes and sort the bounding
+    # boxes by the bottom-right y-coordinate of the bounding box
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    idxs = np.argsort(y2)
+     
+    # keep looping while some indexes still remain in the indexes
+    # list
+    while len(idxs) > 0:
+    	# grab the last index in the indexes list and add the
+    	# index value to the list of picked indexes
+    	last = len(idxs) - 1
+    	i = idxs[last]
+    	pick.append(i)
+     
+    	# find the largest (x, y) coordinates for the start of
+    	# the bounding box and the smallest (x, y) coordinates
+    	# for the end of the bounding box
+    	xx1 = np.maximum(x1[i], x1[idxs[:last]])
+    	yy1 = np.maximum(y1[i], y1[idxs[:last]])
+    	xx2 = np.minimum(x2[i], x2[idxs[:last]])
+    	yy2 = np.minimum(y2[i], y2[idxs[:last]])
+    
+    	# compute the width and height of the bounding box
+    	w = np.maximum(0, xx2 - xx1 + 1)
+    	h = np.maximum(0, yy2 - yy1 + 1)
+    
+    	# compute the ratio of overlap
+    	overlap = (w * h) / area[idxs[:last]]
+    
+    	# delete all indexes from the index list that have
+    	idxs = np.delete(idxs, np.concatenate(([last],np.where(overlap > overlapThresh)[0])))
+    
+      # return only the bounding boxes that were picked using the
+    	# integer data type
+    return boxes[pick].astype("int")
+    	
+
 def process_frame(img, bboxes, tracking):
     
-    undistort_img = undistort_image(img, False)
-    result_img, bboxes_cars = detect_cars(undistort_img, bboxes)
+    #undistort_img = undistort_image(img, False)
+    result_img, bboxes_cars = detect_cars(img, bboxes)
     
     boxes_tracked = []
     if tracking==True:
@@ -192,64 +252,77 @@ def process_frame(img, bboxes, tracking):
             boxes_tracked.append(bbox)
     
     return result_img, boxes_tracked
+
+def heatmap(img, box_list, thresh):
+    # Add heat to each box in box list
+    heat = np.zeros_like(img[:,:,0]).astype(np.float)
+    heat = add_heat(heat,box_list)
+        
+    # Apply threshold to help remove false positives
+    heat = apply_threshold(heat,thresh)
+    
+    # Visualize the heatmap when displaying    
+    heatmap = np.clip(heat, 0, 255)
+    
+    # Find final boxes from heatmap using label function
+    labels = label(heatmap)
+    draw_img, bboxes = draw_labeled_bboxes(np.copy(img), labels)
+    return draw_img, bboxes
     
 def detect_cars(img, bboxes):
-    heat = np.zeros_like(img[:,:,0]).astype(np.float)
-    box_list = []
     
+    box_list = []
+    tracked_boxes = []
+
     for box in bboxes:   
         xstart = box[0][0]
         xstop = box[1][0]
         ystart = box[0][1]
         ystop = box[1][1]
         scale = 0.8
-        out_img_inital_track, box_list = find_cars(img, ystart, ystop, xstart, xstop,
+        out_img_inital_track, tracked_box_list = find_cars(img, ystart, ystop, xstart, xstop,
                                              scale, svc, X_scaler, 
                                              color_space, orient, pix_per_cell, cell_per_block, 
                                              spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                              box_list, visualize=False)
-        
-#        out_img_inital, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
-#                                         scale, svc, X_scaler, 
-#                                         color_space, orient, pix_per_cell, cell_per_block, 
-#                                         spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
-#                                         box_list, visualize=False)
+        draw_img, tracked_boxes = heatmap(img, tracked_box_list, 1)
 
-#        result = cv2.cvtColor(out_img_inital_track, cv2.COLOR_RGB2BGR)
-#        cv2.imshow('Stage 1',result)
-#        cv2.waitKey(-1)
         
     
     xstart = 0
     xstop = img.shape[1]
     ystart = 400
-    ystop = 685
+    ystop = 665
     scale = 1.8
     out_img_inital_1, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                          box_list, visualize=False)
+    
+    draw_img, box_list_1 = heatmap(img, box_list, 3)
 #    result = cv2.cvtColor(out_img_inital_1, cv2.COLOR_RGB2BGR)
 #    cv2.imshow('Stage 1',result)
 #    cv2.waitKey(-1)
     
     xstart = 400
     xstop = img.shape[1]
-    ystart = 350
-    ystop = 550
-    scale = 1.4
+    ystart = 400
+    ystop = 600
+    scale = 1.3
     out_img_inital_2, box_list = find_cars(img, ystart, ystop, xstart, xstop, 
                                          scale, svc, X_scaler, 
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                          box_list, visualize=False)
     
+    draw_img, box_list_2 = heatmap(img, box_list, 3)
+    
 #    result = cv2.cvtColor(out_img_inital_2, cv2.COLOR_RGB2BGR)
 #    cv2.imshow('Stage 2',result)
 #    cv2.waitKey(-1)
     
-    xstart = 400
+    xstart = 500
     xstop = img.shape[1]
     ystart = 400
     ystop = 500
@@ -259,23 +332,18 @@ def detect_cars(img, bboxes):
                                          color_space, orient, pix_per_cell, cell_per_block, 
                                          spatial_size, hist_bins, spatial_feat, hist_feat, hog_feat,
                                          box_list, visualize=False)
+    draw_img, box_list_3 = heatmap(img, box_list, 2)
     
 #    result = cv2.cvtColor(out_img_inital_3, cv2.COLOR_RGB2BGR)
 #    cv2.imshow('Stage 3',result)
 #    cv2.waitKey(-1)
     
-    # Add heat to each box in box list
-    heat = add_heat(heat,box_list)
-        
-    # Apply threshold to help remove false positives
-    heat = apply_threshold(heat,1)
+    result_boxes = tracked_boxes + box_list_1 + box_list_2 + box_list_3
+    draw_img, bboxes = heatmap(img, result_boxes, 0)
     
-    # Visualize the heatmap when displaying    
-    heatmap = np.clip(heat, 0, 255)
-    
-    # Find final boxes from heatmap using label function
-    labels = label(heatmap)
-    draw_img, bboxes = draw_labeled_bboxes(np.copy(img), labels)
+
+    #draw_img, bboxes = heatmap(img, box_list, 2)
+    #bboxes = non_max_suppression_fast(bboxes, 0.5)
     draw_img = cv2.cvtColor(draw_img, cv2.COLOR_RGB2BGR)
     return draw_img, bboxes
     
@@ -284,15 +352,15 @@ test_video = True
 bboxes = []
 
 if test_video == True:
-    vid_name = 'test_video'
+    vid_name = 'project_video'
     cap = cv2.VideoCapture(vid_name+'.mp4')
-    
+    out = cv2.VideoWriter(vid_name+'_result.avi',-1, 20.0, (1280,720))    
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result_img, bboxes = process_frame(frame, bboxes, True)
-            #out.write(result)
+            out.write(result_img)
             cv2.imshow('Result',result_img)
             first_frame = False
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -302,7 +370,7 @@ if test_video == True:
             break;
     
     cap.release()
-    #out.release()
+    out.release()
     cv2.destroyAllWindows()
     
                         
