@@ -19,9 +19,9 @@ The goals / steps of this project are the following:
 [image7]: ./output_images/final_result_1.png
 [image8]: ./output_images/final_result_2.png
 [image9]: ./output_images/final_result_3.png
-[image10]: ./output_images/heat_map_final.png
+[image10]: ./output_images/heat_map_breakdown.png
 [image11]: ./output_images/tracking_breakdown.png
-[video1]: ./project_video_result.mp4
+[video1]: ./project_video_result.avi
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -125,7 +125,7 @@ Here's a [link to my video result][video1]
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap from each ROI area and then thresholded that map to identify vehicle positions. After this each area was overlapped to form an overall heatmap for that frame.  The following functionallity was then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap. It was assumed each blob corresponded to a vehicle.  Finally bounding boxes was constructed to cover the area of each blob detected.  
+I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap for each ROI area and then thresholded that map to identify vehicle positions. After this each area was overlapped to form an overall heatmap for that frame.  The following functionality was then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap. It was assumed each blob corresponded to a vehicle.  Finally bounding boxes was constructed to cover the area of each blob detected.  
 
 Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
 
@@ -138,7 +138,7 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ---
 
-###Discussion
+### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
@@ -150,6 +150,6 @@ Some of the obvious issues are the likes of losing track of a vehicle overtime i
 
 However it is clear that there are some FPs present. This could simply be down to the dataset used, perhaps more images could be added for the vehicles for the vehicles in this video and also for the non-vehicle areas such as vegetation and walls. These are the common sources of FPs, hard negative mining could be used here to try and improve on this further.
 
-Other potential failures could be due to the locations of the ROI. A dynamic ROI based on the vehicle odemtry could certainly be used to correct this.
+Other potential failures could be due to the locations of the ROI. A dynamic ROI based on the vehicle odometry could certainly be used to correct this.
 
 An improved tracking algorithm such as a Kalman filter and smarted scaling approach could also be developed to improve on the robustness of the vehicle detections.
